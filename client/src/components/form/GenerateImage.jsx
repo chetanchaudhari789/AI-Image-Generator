@@ -1,51 +1,109 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React from "react";
 import styled from "styled-components";
-import { AutoAwesome, CreateRounded } from "@mui/icons-material";
-import TextInput from "../Input/TextInput";
-import Button from "../buttons/button";
-import { CreatePost, GenerateImageFromPrompt } from "../../api";
+import { Button } from "@mui/material";
+import { GenerateImageFromPrompt, CreatePost } from "../../api";
 
-const Form = styled.div`
+const Form = styled.form`
   flex: 1;
-  padding: 16px 20px;
+  background: ${({ theme }) => theme.card};
+  border-radius: 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 9%;
-  justify-content: center;
+  gap: 20px;
+  box-shadow: 0 4px 20px ${({ theme }) => theme.shadow};
+  transition: all 0.3s ease;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
 `;
 
-const Top = styled.div`
+const Title = styled.h2`
+  font-size: 24px;
+  font-weight: 600;
+  color: ${({ theme }) => theme.text_primary};
+  margin-bottom: 8px;
+`;
+
+const InputWrapper = styled.div`
   display: flex;
   flex-direction: column;
   gap: 6px;
 `;
 
-const Title = styled.div`
-  font-size: 28px;
+const Label = styled.label`
+  font-size: 14px;
   font-weight: 500;
-  color: ${({ theme }) => theme.text_primary};
-`;
-
-const Desc = styled.div`
-  font-size: 17px;
-  font-weight: 400;
   color: ${({ theme }) => theme.text_secondary};
 `;
 
-const Body = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  font-size: 12px;
-  font-weight: 400;
-  color: ${({ theme }) => theme.text_secondary};
+const Input = styled.input`
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid ${({ theme }) => theme.border};
+  background: ${({ theme }) => theme.background_alt};
+  color: black
+  outline: none;
+  font-size: 15px;
+  transition: all 0.3s ease;
+
+  &:focus {
+    border-color: ${({ theme }) => theme.primary};
+    box-shadow: 0 0 4px ${({ theme }) => theme.primary + "80"};
+  }
 `;
 
-const Actions = styled.div`
+const Textarea = styled.textarea`
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid ${({ theme }) => theme.border};
+  background: ${({ theme }) => theme.background_alt};
+  color: black;
+  outline: none;
+  font-size: 15px;
+  resize: none;
+  height: 100px;
+  transition: all 0.3s ease;
+
+  &:focus {
+    border-color: ${({ theme }) => theme.primary};
+    box-shadow: 0 0 4px ${({ theme }) => theme.primary + "80"};
+  }
+`;
+
+const ButtonRow = styled.div`
   display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+
+  @media (max-width: 480px) {
+    flex-direction: column;
+  }
+`;
+
+const StyledButton = styled(Button)`
   flex: 1;
-  gap: 8px;
+  padding: 12px 0 !important;
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  transition: all 0.3s ease !important;
+
+  &.generate {
+    background: ${({ theme }) => theme.primary} !important;
+    color: #fff !important;
+  }
+
+  &.share {
+    background: ${({ theme }) => theme.secondary} !important;
+    color: #fff !important;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+  }
 `;
 
 const GenerateImage = ({
@@ -56,88 +114,78 @@ const GenerateImage = ({
   post,
   setPost,
 }) => {
-  const navigate = useNavigate();
-  const [error, setError] = useState("");
-
-  const generateImage = async () => {
+  const handleGenerate = async (e) => {
+    e.preventDefault();
+    if (!post.prompt) return alert("Please enter a prompt");
     setGenerateImageLoading(true);
-    setError("");
-    await GenerateImageFromPrompt({ prompt: post.prompt })
-      .then((res) => {
-        setPost({
-          ...post,
-          photo: `data:image/jpeg;base64,${res?.data?.photo}`,
-        });
-        setGenerateImageLoading(false);
-      })
-      .catch((error) => {
-        setError(error?.response?.data?.message);
-        setGenerateImageLoading(false);
-      });
+    try {
+      const res = await GenerateImageFromPrompt({ prompt: post.prompt });
+      setPost({ ...post, photo: `data:image/jpeg;base64,${res.photo}` });
+    } catch (error) {
+      console.error(error);
+      alert(error?.response?.data?.error || "Image generation failed.");
+    } finally {
+      setGenerateImageLoading(false);
+    }
   };
-  const createPost = async () => {
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!post.name || !post.prompt || !post.photo)
+      return alert("Please fill all fields and generate an image first!");
+
     setcreatePostLoading(true);
-    setError("");
-    await CreatePost(post)
-      .then((res) => {
-        navigate("/");
-        setcreatePostLoading(false);
-      })
-      .catch((error) => {
-        setError(error?.response?.data?.message);
-        setcreatePostLoading(false);
-      });
+    try {
+      await CreatePost(post);
+      alert("Post created successfully!");
+      setPost({ name: "", prompt: "", photo: "" });
+    } catch (error) {
+      alert(error?.response?.data?.message || "Post creation failed");
+    } finally {
+      setcreatePostLoading(false);
+    }
   };
 
   return (
-    <Form>
-      <Top>
-        <Title>Generate Image with prompt</Title>
-        <Desc>
-          Write your prompt according to the image you want to generate!
-        </Desc>
-      </Top>
-      <Body>
-        <TextInput
-          label="Author"
-          placeholder="Enter your name"
-          name="name"
+    <Form onSubmit={handleSubmit}>
+      <Title>Create a New Post</Title>
+
+      <InputWrapper>
+        <Label>Your Name</Label>
+        <Input
+          type="text"
+          placeholder="e.g., Chetan Chaudhari"
           value={post.name}
-          handelChange={(e) => setPost({ ...post, name: e.target.value })}
+          onChange={(e) => setPost({ ...post, name: e.target.value })}
         />
-        <TextInput
-          label="Image Prompt"
-          placeholder="Write a detailed prompt about the image"
-          name="prompt"
-          textArea
-          rows="8"
+      </InputWrapper>
+
+      <InputWrapper>
+        <Label>Prompt</Label>
+        <Textarea
+          placeholder="Describe your image prompt here..."
           value={post.prompt}
-          handelChange={(e) => setPost({ ...post, prompt: e.target.value })}
+          onChange={(e) => setPost({ ...post, prompt: e.target.value })}
         />
-        {error && <div style={{ color: "red" }}>{error}</div>}* You can post the
-        AI Generated Image to showcase in the community!
-      </Body>
-      <Actions>
-        <Button
-          text="Generate Image"
-          leftIcon={<AutoAwesome />}
-          flex
-          isLoading={generateImageLoading}
-          isDisabled={post.prompt === ""}
-          onClick={(e) => generateImage()}
-        />
-        <Button
-          text="Post Image"
-          leftIcon={<CreateRounded />}
-          type="secondary"
-          flex
-          isDisabled={
-            post.name === "" || post.photo === "" || post.prompt === ""
-          }
-          isLoading={createPostLoading}
-          onClick={() => createPost()}
-        />
-      </Actions>
+      </InputWrapper>
+
+      <ButtonRow>
+        <StyledButton
+          className="generate"
+          onClick={handleGenerate}
+          disabled={generateImageLoading}
+        >
+          {generateImageLoading ? "Generating..." : "Generate Image"}
+        </StyledButton>
+
+        <StyledButton
+          className="share"
+          type="submit"
+          disabled={createPostLoading}
+        >
+          {createPostLoading ? "Sharing..." : "Share Post"}
+        </StyledButton>
+      </ButtonRow>
     </Form>
   );
 };

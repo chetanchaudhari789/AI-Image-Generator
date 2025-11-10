@@ -1,3 +1,4 @@
+// src/pages/Home.jsx
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import SearchBar from "../components/SearchBar";
@@ -9,7 +10,7 @@ const Container = styled.div`
   padding: 30px 30px;
   padding-bottom: 200px;
   height: 100%;
-  overflow-y: scroll;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -62,7 +63,7 @@ const CardWrapper = styled.div`
 `;
 
 const Home = () => {
-  const [posts, setPosts] = useState([]);
+  const [posts, setPosts] = useState([]); // always array
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -70,16 +71,19 @@ const Home = () => {
 
   const getPosts = async () => {
     setLoading(true);
-    await GetPosts()
-      .then((res) => {
-        setPosts(res?.data?.data);
-        setFilteredPost(res?.data?.data);
-        setLoading(false);
-      })
-      .catch((error) => {
-        setError(error?.response?.data?.message);
-        setLoading(false);
-      });
+    setError("");
+    try {
+      const data = await GetPosts(); // now returns normalized array
+      // data might be array or object - ensure array
+      const normalized = Array.isArray(data) ? data : data?.data ?? [];
+      setPosts(normalized);
+      setFilteredPost(normalized);
+    } catch (err) {
+      console.error(err);
+      setError(err?.response?.data?.message || err.message || "Failed to fetch posts");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -87,19 +91,18 @@ const Home = () => {
   }, []);
 
   useEffect(() => {
-    if (!search) {
+    const q = (search || "").toString().trim().toLowerCase();
+    if (!q) {
       setFilteredPost(posts);
+      return;
     }
-    const filteredPosts = posts.filter((post) => {
-      const promptMatch = post?.prompt?.toLowerCase().includes(search);
-      const authorMatch = post?.author?.toLowerCase().includes(search);
 
-      return promptMatch || authorMatch;
+    const filtered = posts.filter((post) => {
+      const promptMatch = post?.prompt?.toString().toLowerCase().includes(q);
+      const authorMatch = (post?.author || post?.name || "").toString().toLowerCase().includes(q);
+      return (promptMatch || authorMatch);
     });
-
-    if (search) {
-      setFilteredPost(filteredPosts);
-    }
+    setFilteredPost(filtered);
   }, [posts, search]);
 
   return (
@@ -108,27 +111,20 @@ const Home = () => {
         Explore popular posts in the Community!
         <Span>⦾ Generated with AI ⦾</Span>
       </HeadLine>
-      <SearchBar
-        search={search}
-        handleChange={(e) => setSearch(e.target.value)}
-      />
+      <SearchBar search={search} handleChange={(e) => setSearch(e.target.value)} />
       <Wrapper>
         {error && <div style={{ color: "red" }}>{error}</div>}
         {loading ? (
           <CircularProgress />
         ) : (
           <CardWrapper>
-            {filteredPost.length > 0 ? (
-              <>
-                {filteredPost
-                  .slice()
-                  .reverse()
-                  .map((item, index) => (
-                    <ImageCard key={index} item={item} />
-                  ))}
-              </>
+            {Array.isArray(filteredPost) && filteredPost.length > 0 ? (
+              filteredPost
+                .slice()
+                .reverse()
+                .map((item, index) => <ImageCard key={index} item={item} />)
             ) : (
-              <>No Posts Found !!</>
+              <div>No Posts Found !!</div>
             )}
           </CardWrapper>
         )}

@@ -1,98 +1,65 @@
+// src/components/cards/ImageCard.jsx
 import React from "react";
 import styled from "styled-components";
-import FileSaver from "file-saver";
-import { LazyLoadImage } from "react-lazy-load-image-component";
-import { Avatar } from "@mui/material";
-import { DownloadRounded } from "@mui/icons-material";
 
-const Card = styled.div`
-  position: relative;
+const CardContainer = styled.div`
+  width: 100%;
+  height: 240px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: ${({ theme }) => theme.black + "20"};
   display: flex;
-  background: ${({ theme }) => theme.card};
-  border-radius: 20px;
-  box-shadow: 1px 2px 40px 8px ${({ theme }) => theme.black + 60};
-  gap: 10px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  &:hover {
-    box-shadow: 1px 2px 40px 8px ${({ theme }) => theme.black + 80};
-    scale: 1.05;
-  }
-  &:nth-child(7n + 1) {
-    grid-column: auto/span 2;
-    grid-row: auto/span 2;
-  }
-`;
-
-const HoverOverlay = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: start;
-  gap: 2px;
-  justify-content: end;
-  flex-direction: column;
-  backdrop-filter: blur(2px);
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 6px;
-  opacity: 0;
-  padding: 16px;
-  transition: opacity 0.3s ease;
-  color: ${({ theme }) => theme.white};
-
-  ${Card}:hover & {
-    opacity: 1;
-  }
-`;
-
-const Prompt = styled.div`
-  font-weight: 400;
-  font-size: 15px;
-  color: ${({ theme }) => theme.white};
-`;
-const Author = styled.div`
-  font-weight: 600;
-  font-size: 14px;
-  display: flex;
-  gap: 8px;
   align-items: center;
-  color: ${({ theme }) => theme.white};
+  justify-content: center;
 `;
 
-const ImageCard = ({ item, heights }) => {
-  return (
-    <Card>
-      <LazyLoadImage
-        alt={item?.prompt}
-        width="100%"
-        src={item?.photo}
-        style={{ borderRadius: "12px" }}
-      />
-      <HoverOverlay>
-        <Prompt>• {item?.prompt}</Prompt>
-        <div
-          style={{
-            width: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <Author>
-            <Avatar sx={{ background: "green", width: "32px", height: "32px" }}>
-              {item?.name[0]}
-            </Avatar>{" "}
-            {item?.name}
-          </Author>
-          <DownloadRounded
-            onClick={() => FileSaver.saveAs(item?.photo, `download.jpg`)}
-          />
+const Img = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
+const Meta = styled.div`
+  position: absolute;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.4);
+  color: white;
+  font-size: 12px;
+  border-radius: 6px;
+  top: 8px;
+  left: 8px;
+`;
+
+const Wrapper = styled.div`
+  position: relative;
+`;
+
+const ImageCard = ({ item }) => {
+  // Item might contain different fields depending on backend: { photo } or { image } or { prompt, author }
+  const photo = item?.photo || item?.image || item?.base64Image || null;
+  const author = item?.author || item?.name || "Unknown";
+  const prompt = item?.prompt || "";
+
+  const src = photo ? (photo.startsWith("data:") ? photo : `data:image/png;base64,${photo}`) : null;
+
+  if (!src) {
+    return (
+      <CardContainer>
+        <div style={{ textAlign: "center", padding: 12 }}>
+          <div style={{ fontWeight: 600 }}>No image</div>
+          <div style={{ fontSize: 12, marginTop: 6 }}>{prompt || "No prompt"}</div>
         </div>
-      </HoverOverlay>
-    </Card>
+      </CardContainer>
+    );
+  }
+
+  return (
+    <Wrapper>
+      <CardContainer>
+        <Img src={src} alt={prompt || "Generated"} />
+      </CardContainer>
+      <Meta>{author}</Meta>
+    </Wrapper>
   );
 };
 

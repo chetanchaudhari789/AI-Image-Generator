@@ -1,3 +1,4 @@
+// src/pages/CreatePost.jsx
 import React, { useState } from "react";
 import styled from "styled-components";
 import GenerateImage from "../components/form/GenerateImage";
@@ -9,7 +10,7 @@ const Container = styled.div`
   height: 100%;
   justify-content: center;
   align-items: center;
-  overflow-y: scroll;
+  overflow-y: auto;
   display: flex;
   gap: 20px;
   @media (max-width: 768px) {
