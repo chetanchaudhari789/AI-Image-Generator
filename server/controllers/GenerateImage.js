@@ -1,43 +1,65 @@
 import * as dotenv from "dotenv";
 import { createError } from "../error.js";
-import OpenAI from "openai";
+import fetch from "node-fetch";
 
 dotenv.config();
 
-// Setup OpenAI API key
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-// Controller to generate Image
+/**
+ * Controller: Generate Image using Hugging Face API
+ * 
+ * - Uses the free Hugging Face inference API for text-to-image generation
+ * - Works with models like stabilityai/stable-diffusion-2
+ * - Returns a base64 image to the client
+ */
 export const generateImage = async (req, res, next) => {
   try {
     const { prompt } = req.body;
 
-    // Validate prompt
+    // ✅ Validate prompt
     if (!prompt || typeof prompt !== "string" || prompt.trim() === "") {
       return next(createError(400, "Invalid prompt provided."));
     }
 
-    const response = await openai.images.generate({
-      prompt,
-      n: 1,
-      size: "1024x1024",
-      response_format: "b64_json",
-    });
+    // ✅ Choose a model (you can change this)
+    const model = "stabilityai/stable-diffusion-2";
 
-    // Check if response is valid
-    if (!response || !response.data || !response.data.data) {
-      return next(createError(500, "No image data returned from OpenAI."));
+    // ✅ Send request to Hugging Face API
+    const response = await fetch(
+      `https://api-inference.huggingface.co/models/${model}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ inputs: prompt }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return next(
+        createError(
+          response.status,
+          `Hugging Face API error: ${errorText || "Failed to generate image"}`
+        )
+      );
     }
 
-    const generatedImage = response.data.data[0].b64_json;
-    res.status(200).json({ photo: generatedImage });
+    // ✅ Convert image buffer to base64
+    const arrayBuffer = await response.arrayBuffer();
+    const base64Image = Buffer.from(arrayBuffer).toString("base64");
+
+    // ✅ Return the image as base64 to frontend
+    res.status(200).json({
+      photo: `data:image/png;base64,${base64Image}`,
+    });
   } catch (error) {
+    console.error("Error generating image:", error);
     next(
       createError(
         error.status || 500,
-        error?.response?.data?.error?.message || error.message || "An error occurred while generating the image."
+        error.message || "An error occurred while generating the image."
       )
     );
   }
