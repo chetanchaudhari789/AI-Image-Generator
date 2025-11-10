@@ -22,7 +22,7 @@ export const generateImage = async (req, res, next) => {
     }
 
     // ✅ Choose a model (you can change this)
-    const model = "stabilityai/stable-diffusion-2";
+    const model = "black-forest-labs/FLUX.1-Krea-dev";
 
     // ✅ Send request to Hugging Face API
     const response = await fetch(
