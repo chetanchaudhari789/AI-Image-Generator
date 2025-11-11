@@ -2,57 +2,51 @@ import * as dotenv from "dotenv";
 import { createError } from "../error.js";
 import fetch from "node-fetch";
 
-
 dotenv.config();
 
-/**
- * Controller: Generate Image using Hugging Face API
- * 
- * - Uses the free Hugging Face inference API for text-to-image generation
- * - Works with models like stabilityai/stable-diffusion-2
- * - Returns a base64 image to the client
- */
 export const generateImage = async (req, res, next) => {
   try {
     const { prompt } = req.body;
 
-    // ✅ Validate prompt
     if (!prompt || typeof prompt !== "string" || prompt.trim() === "") {
       return next(createError(400, "Invalid prompt provided."));
     }
 
-    // ✅ Choose a model (you can change this)
-    const model = "black-forest-labs/FLUX.1-Krea-dev";
+    const model = "stabilityai/stable-diffusion-xl-base-1.0";
 
-    // ✅ Send request to Hugging Face API
+    // ✅ NEW CORRECT ENDPOINT
     const response = await fetch(
-      `https://api-inference.huggingface.co/models/${model}`,
+      `https://router.huggingface.co/hf-inference/models/${model}`,
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ inputs: prompt }),
+        body: JSON.stringify({
+          inputs: prompt,
+          options: { wait_for_model: true }, // ensures model loads fully
+        }),
       }
     );
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error("Hugging Face API Error:", errorText);
       return next(
         createError(
           response.status,
-          `Hugging Face API error: ${errorText || "Failed to generate image"}`
+          `Hugging Face API error: ${errorText}`
         )
       );
     }
 
-    // ✅ Convert image buffer to base64
+    // ✅ Handle the image output properly
     const arrayBuffer = await response.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-    // ✅ Return the image as base64 to frontend
     res.status(200).json({
+      success: true,
       photo: `data:image/png;base64,${base64Image}`,
     });
   } catch (error) {
